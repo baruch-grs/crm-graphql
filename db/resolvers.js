@@ -16,8 +16,17 @@ const cursos = [
     technology: 'React'
   }
 ];
+
+require('dotenv').config({ path: 'variables.env' });
+const jwt = require('jsonwebtoken');
 const bcryptjs = require('bcryptjs');
 const User = require('../models/User');
+
+const createToken = (user, passphrase, expiresIn) => {
+  console.log(user);
+  const { id, email, name, lastName } = user;
+  return jwt.sign({ id, email, name, lastName }, passphrase, { expiresIn });
+}
 // Resolvers
 const resolvers = {
   Query: {
@@ -49,6 +58,27 @@ const resolvers = {
       } catch (error) {
         console.log(error);
       }
+    },
+
+    authenticateUser: async (_, { input }) => {
+      const { email, password } = input;
+      // Verificar si el usuario existe
+      const userExists = await User.findOne({ email });
+      if (!userExists) {
+        throw new Error('Wrong user or password!');
+      }
+
+      // Revisar si password es correcto
+      const rightPassword = await bcryptjs.compare(password, userExists.password);
+      if (!rightPassword) {
+        throw new Error('Wrong user or password!');
+      }
+
+      return {
+        token: createToken(userExists, process.env.PASSPHRASE, '24h')
+      }
+
+      // Crear token
     }
   }
 }
