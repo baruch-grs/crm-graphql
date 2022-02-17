@@ -55,6 +55,33 @@ const resolvers = {
       }
 
       return product;
+    },
+    getClients: async () => {
+      try {
+        const clients = await Client.find({});
+        return clients;
+      } catch (error) {
+        console.log(error);
+      }
+    },
+    getClientsSeller: async (_, { }, context) => {
+      try {
+        const clients = await Client.find({ seller: context.user.id.toString() });
+        return clients;
+      } catch (error) {
+        console.log(error);
+      }
+    },
+    getClientByID: async (_, { id }, context) => {
+      // Revisar si cliente existe o no
+      const client = await Client.findById(id);
+      if (!client) {
+        throw new Error('Client not found');
+      }
+      // Quien lo creó puede verlo
+      if (client.seller.toString() !== context.user.id) {
+        throw new Error("You don't have permissions to do that");
+      }
     }
   },
   Mutation: {
@@ -139,28 +166,27 @@ const resolvers = {
       return 'Producto eliminado';
     },
 
-    newClient: async (_, { input }) => {
+    newClient: async (_, { input }, context) => {
+      console.log(context);
       const { email } = input;
       // Verificar si el cliente está registrado
       console.log(input);
-      const client = Client.findOne({ email });
-
+      const client = await Client.findOne({ email });
       if (client) {
         throw new Error('Client already registered');
       }
       const newClient = new Client(input);
 
       // Asignar vendedor
-      newClient.seller = "620e8ffdb6cb9b9b6dda706d";
+      newClient.seller = context.user.id;
       // Guardar en BBDD
       try {
         const result = await newClient.save();
-        return result
-
+        return result;
       } catch (error) {
         console.log('ERROR, CLIENT NOT REGISTERED', error);
       }
-    }
+    },
   }
 }
 
